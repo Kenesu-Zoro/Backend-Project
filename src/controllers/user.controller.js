@@ -16,7 +16,7 @@ const registerUser = asyncHandler( async (req,res) => {
     //ret  urn response
 
     const {fullName, email, username, password} = req.body
-    console.log("email: ", email)
+    console.log(req.body)
 
     if([fullName, email, username, password].some((field)=>
         field?.trim() === "")
@@ -24,16 +24,25 @@ const registerUser = asyncHandler( async (req,res) => {
      throw new ApiError(400, "All fields are required!")   
     }
     
-    const existedUser= User.findOne({
+    const existedUser = await User.findOne({
         $or: [{username}, {email}]
     })
 
     if(existedUser){
         throw new ApiError(409, "User with username or email already exists!")
     }
+    // console.log("req.files: ", req.files)
 
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    //const coverImageLocalPath = req.files?.coverImage[0]?.path; 
+    // (IMP NOTE: Commented this out because in Postman it was throwing an undefined error — we were only checking avatar for existence,
+    //  but not checking coverImage before accessing [0]. So if coverImage was not provided in the request, it caused a TypeError due to 
+    // trying to read property [0] of undefined.)
+
+    let coverImageLocalPath;
+    if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0){
+       coverImageLocalPath =  req.files.coverImage[0].path
+    } 
 
     if(!avatarLocalPath){
         throw new ApiError(400, "Avatar is required")
@@ -41,6 +50,9 @@ const registerUser = asyncHandler( async (req,res) => {
     // this is why we put async in the beginning of this code coz uploading will take time
     const avatar = await uploadOnCloudinary(avatarLocalPath)
     const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+
+    // console.log("avatar: ", avatar.url)
+    // console.log("coverImage: ", coverImage.url)
 
     if(!avatar){
          throw new ApiError(400, "Avatar is required")
@@ -64,8 +76,10 @@ const registerUser = asyncHandler( async (req,res) => {
    }
 
    return res.status(201).json(
-    new ApiResponse(200, createdUser, "User registred successfully!")
+    new ApiResponse(200, createdUser, "User registred sucessfully!")
    )
 } )
+
+
 
 export {registerUser}
